@@ -9,7 +9,7 @@ A Python-based web scraper that logs into Starlink's website, extracts daily dat
 ```
 starlink-webscraper/
 ├── app.py               # Flask web application
-├── scraper.py           # Selenium scraper logic
+├── scraper.py           # Playwright scraper logic
 ├── requirements.txt     # Python dependencies
 ├── templates/
 │   └── index.html       # Web UI dashboard
