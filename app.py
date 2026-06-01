@@ -15,7 +15,7 @@ def _scrape_job():
     scrape_status["message"] = "Scraping in progress…"
     scrape_status["success"] = None
     try:
-        path = run_scraper(headless=True)
+        path = run_scraper(headless=False)
         if path:
             scrape_status["message"] = f"Scrape complete! Data saved to {os.path.basename(path)}."
             scrape_status["success"] = True
