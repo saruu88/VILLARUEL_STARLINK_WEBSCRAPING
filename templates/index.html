@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Starlink Data Usage Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #070b12;
+      --surface: #0d1520;
+      --surface2: #111c2e;
+      --border: #1e3050;
+      --accent: #00d4ff;
+      --accent2: #0af5a0;
+      --accent3: #ff6b35;
+      --text: #e8f4ff;
+      --muted: #5a7a9a;
+      --danger: #ff4757;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── starfield bg ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        radial-gradient(1px 1px at 10% 20%, rgba(0,212,255,.4) 0%, transparent 100%),
+        radial-gradient(1px 1px at 80% 10%, rgba(10,245,160,.3) 0%, transparent 100%),
+        radial-gradient(1px 1px at 55% 70%, rgba(255,107,53,.2) 0%, transparent 100%),
+        radial-gradient(600px circle at 20% 50%, rgba(0,212,255,.04) 0%, transparent 70%),
+        radial-gradient(600px circle at 80% 50%, rgba(10,245,160,.03) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    .wrapper { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+    /* ── Header ── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 2.5rem;
+      gap: 1rem; flex-wrap: wrap;
+    }
+    .logo { display: flex; align-items: center; gap: .75rem; }
+    .logo-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem;
+    }
+    h1 { font-size: 1.4rem; font-weight: 800; letter-spacing: -.02em; }
+    h1 span { color: var(--accent); }
+    .subtitle { font-family: 'Space Mono', monospace; font-size: .7rem; color: var(--muted); margin-top: .2rem; }
+
+    /* ── Stat cards ── */
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.25rem 1.5rem;
+      transition: border-color .2s;
+    }
+    .stat-card:hover { border-color: var(--accent); }
+    .stat-label { font-family: 'Space Mono', monospace; font-size: .65rem; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; margin-bottom: .4rem; }
+    .stat-value { font-size: 1.8rem; font-weight: 800; }
+    .stat-value.accent  { color: var(--accent); }
+    .stat-value.accent2 { color: var(--accent2); }
+    .stat-value.accent3 { color: var(--accent3); }
+
+    /* ── Controls ── */
+    .controls {
+      display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; align-items: center;
+    }
+    button {
+      font-family: 'Syne', sans-serif; font-weight: 600; font-size: .85rem;
+      border: none; border-radius: 10px; cursor: pointer;
+      padding: .65rem 1.4rem; transition: all .2s;
+    }
+    .btn-primary {
+      background: var(--accent); color: #000;
+    }
+    .btn-primary:hover { background: #00aacc; transform: translateY(-1px); }
+    .btn-primary:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; transform: none; }
+    .btn-secondary {
+      background: transparent; color: var(--accent2);
+      border: 1px solid var(--accent2);
+    }
+    .btn-secondary:hover { background: rgba(10,245,160,.08); }
+    .btn-secondary:disabled { opacity: .4; cursor: not-allowed; }
+
+    .status-badge {
+      font-family: 'Space Mono', monospace; font-size: .7rem;
+      padding: .4rem .9rem; border-radius: 20px;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .status-badge.running { color: var(--accent); border-color: var(--accent); animation: pulse 1.5s infinite; }
+    .status-badge.success { color: var(--accent2); border-color: var(--accent2); }
+    .status-badge.error   { color: var(--danger);  border-color: var(--danger);  }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+    /* ── Chart ── */
+    .chart-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 1.5rem; margin-bottom: 2rem;
+    }
+    .chart-card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1.25rem; color: var(--muted); }
+    .chart-wrap { position: relative; height: 260px; }
+
+    /* ── Table ── */
+    .table-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; overflow: hidden; margin-bottom: 2rem;
+    }
+    .table-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border);
+    }
+    .table-header h2 { font-size: 1rem; font-weight: 600; color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      font-family: 'Space Mono', monospace; font-size: .65rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .1em;
+      padding: .85rem 1.5rem; text-align: left;
+      background: var(--surface2); font-weight: 400;
+    }
+    td {
+      padding: .85rem 1.5rem; font-size: .9rem;
+      border-top: 1px solid var(--border);
+    }
+    tr:hover td { background: rgba(0,212,255,.03); }
+    .gb-cell { font-family: 'Space Mono', monospace; color: var(--accent2); font-weight: 700; }
+    .bar-bg { background: var(--surface2); border-radius: 4px; height: 6px; min-width: 80px; }
+    .bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+
+    .empty-state {
+      text-align: center; padding: 4rem 2rem; color: var(--muted);
+      font-family: 'Space Mono', monospace; font-size: .85rem;
+    }
+    .empty-state .big { font-size: 3rem; margin-bottom: 1rem; }
+
+    footer {
+      border-top: 1px solid var(--border); padding-top: 1.5rem;
+      font-family: 'Space Mono', monospace; font-size: .65rem; color: var(--muted);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🛰️</div>
+      <div>
+        <h1><span>Starlink</span> Data Usage</h1>
+        <div class="subtitle">// webscraper dashboard</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Stat cards -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Total Days</div>
+      <div class="stat-value accent" id="stat-days">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Usage</div>
+      <div class="stat-value accent2" id="stat-total">— GB</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Daily Average</div>
+      <div class="stat-value" id="stat-avg">— GB</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Peak Day</div>
+      <div class="stat-value accent3" id="stat-peak">— GB</div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="btn-primary" id="btn-scrape" onclick="startScrape()">▶ Run Scraper</button>
+    <button class="btn-secondary" id="btn-download" onclick="downloadCSV()" disabled>⬇ Download CSV</button>
+    <span class="status-badge" id="status-badge">Idle</span>
+  </div>
+
+  <!-- Chart -->
+  <div class="chart-card">
+    <h2>Daily Data Usage (GB)</h2>
+    <div class="chart-wrap">
+      <canvas id="usageChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-card">
+    <div class="table-header">
+      <h2>Usage Records</h2>
+      <span id="record-count" style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted)">0 records</span>
+    </div>
+    <div id="table-body">
+      <div class="empty-state">
+        <div class="big">🛰️</div>
+        Click <strong>Run Scraper</strong> to fetch live data from Starlink.
+      </div>
+    </div>
+  </div>
+
+  <footer>Starlink Webscraper Lab · Built with Python + Flask + Selenium</footer>
+</div>
+
+<script>
+  let chart = null;
+  let pollTimer = null;
+  let maxGB = 1;
+
+  // ── Chart init ──────────────────────────────────────────────────────────────
+  const ctx = document.getElementById('usageChart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: [], datasets: [{ label: 'GB', data: [],
+      backgroundColor: 'rgba(0,212,255,.25)',
+      borderColor: '#00d4ff', borderWidth: 2,
+      borderRadius: 6, hoverBackgroundColor: 'rgba(10,245,160,.35)',
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        backgroundColor: '#0d1520', borderColor: '#1e3050', borderWidth: 1,
+        titleColor: '#5a7a9a', bodyColor: '#e8f4ff',
+        callbacks: { label: ctx => ` ${ctx.parsed.y} GB` }
+      }},
+      scales: {
+        x: { ticks: { color: '#5a7a9a', font: { family: 'Space Mono', size: 10 } }, grid: { color: '#111c2e' } },
+        y: { ticks: { color: '#5a7a9a', font: { family: 'Space Mono', size: 10 }, callback: v => v + ' GB' }, grid: { color: '#111c2e' } }
+      }
+    }
+  });
+
+  // ── Load existing CSV data on page load ─────────────────────────────────────
+  window.addEventListener('DOMContentLoaded', loadData);
+
+  function loadData() {
+    fetch('/api/data')
+      .then(r => r.json())
+      .then(d => { if (d.rows.length) renderData(d.rows); });
+  }
+
+  // ── Scrape ──────────────────────────────────────────────────────────────────
+  function startScrape() {
+    document.getElementById('btn-scrape').disabled = true;
+    setBadge('running', '⏳ Scraping…');
+    fetch('/api/scrape', { method: 'POST' })
+      .then(() => { pollTimer = setInterval(pollStatus, 2500); });
+  }
+
+  function pollStatus() {
+    fetch('/api/scrape-status')
+      .then(r => r.json())
+      .then(s => {
+        setBadge(s.running ? 'running' : (s.success ? 'success' : 'error'), s.message);
+        if (!s.running) {
+          clearInterval(pollTimer);
+          document.getElementById('btn-scrape').disabled = false;
+          if (s.success) loadData();
+        }
+      });
+  }
+
+  function setBadge(state, msg) {
+    const b = document.getElementById('status-badge');
+    b.className = 'status-badge ' + state;
+    b.textContent = msg.length > 60 ? msg.slice(0, 57) + '…' : msg;
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+  function renderData(rows) {
+    const labels = rows.map(r => r['Date']);
+    const values = rows.map(r => parseFloat(r['Data Usage (GB)']));
+    maxGB = Math.max(...values);
+
+    // Stats
+    const total = values.reduce((a, b) => a + b, 0);
+    const avg   = total / values.length;
+    const peak  = maxGB;
+    document.getElementById('stat-days').textContent  = rows.length;
+    document.getElementById('stat-total').textContent = total.toFixed(2) + ' GB';
+    document.getElementById('stat-avg').textContent   = avg.toFixed(2)   + ' GB';
+    document.getElementById('stat-peak').textContent  = peak.toFixed(2)  + ' GB';
+
+    // Chart
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = values;
+    chart.update();
+
+    // Table
+    const tbody = document.getElementById('table-body');
+    tbody.innerHTML = '';
+    const table = document.createElement('table');
+    table.innerHTML = `<thead><tr><th>#</th><th>Date</th><th>Data Usage (GB)</th><th>Relative Usage</th></tr></thead>`;
+    const tbodyEl = document.createElement('tbody');
+    rows.forEach((row, i) => {
+      const gb  = parseFloat(row['Data Usage (GB)']);
+      const pct = (gb / maxGB * 100).toFixed(1);
+      const tr  = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="color:var(--muted);font-family:'Space Mono',monospace;font-size:.75rem">${String(i+1).padStart(2,'0')}</td>
+        <td>${row['Date']}</td>
+        <td class="gb-cell">${gb.toFixed(2)}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:.75rem">
+            <div class="bar-bg" style="flex:1"><div class="bar-fill" style="width:${pct}%"></div></div>
+            <span style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted);min-width:36px">${pct}%</span>
+          </div>
+        </td>`;
+      tbodyEl.appendChild(tr);
+    });
+    table.appendChild(tbodyEl);
+    tbody.appendChild(table);
+
+    document.getElementById('record-count').textContent = rows.length + ' records';
+    document.getElementById('btn-download').disabled = false;
+  }
+
+  function downloadCSV() {
+    window.location.href = '/api/download-csv';
+  }
+</script>
+</body>
+</html>
