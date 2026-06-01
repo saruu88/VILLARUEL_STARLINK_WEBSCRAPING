@@ -32,7 +32,7 @@ starlink-webscraper/
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/starlink-webscraper.git
-cd starlink-webscraper
+cd VILLARUEL_STARLINK_WEBSCRAPING
 ```
 
 ### 2. Create a virtual environment (recommended)
@@ -53,7 +53,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-> **Note:** `webdriver-manager` automatically downloads the correct ChromeDriver for your Chrome version — no manual setup needed.
+> **Note:** `playwright install` Install the required browser binaries
 
 ---
 
@@ -78,7 +78,7 @@ Then open your browser at: **http://127.0.0.1:5000**
 python scraper.py
 ```
 
-This runs the scraper headlessly and saves `starlink_data_usage.csv` in the project folder.
+This runs the scraper and saves `starlink_data_usage.csv` in the project folder.
 
 ---
 
@@ -97,14 +97,12 @@ This runs the scraper headlessly and saves `starlink_data_usage.csv` in the proj
 | Package           | Purpose                                      |
 |-------------------|----------------------------------------------|
 | flask             | Web framework for the dashboard UI           |
-| selenium          | Browser automation for scraping Starlink     |
-| webdriver-manager | Auto-downloads the matching ChromeDriver     |
+| playwright        | Modern browser automation for web scraping   |
 
 ---
 
 ## Notes
 
-- The scraper runs in **headless mode** by default (no visible browser window).
 - To watch the browser in action, edit `scraper.py` and set `headless=False` in `run_scraper()`.
 - Credentials are stored in `scraper.py` — do **not** share or commit them publicly.
 - If the scraper cannot detect the page layout, it saves `page_source.html` and `data_usage_page.png` in the project folder for debugging.
